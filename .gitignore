@@ -37,3 +37,153 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+#get libraries for DESeq2, pheatmap, limma
+library(DESeq2)
+library(pheatmap)
+library(limma)
+
+#here type the path for the file name
+setwd("")
+load("LFNGse.Robj")
+samples <- read.delim("Lfng_SampeID_R_object_11032020.txt")
+geneList <- read.delim("neuron and astrocyte genes.txt")
+ast  <- as.character(geneList[1:68,1])
+neuron <- as.character(geneList[-(1:69),1])
+
+colnames(se) <- gsub("Aligned.out.bam", "", colnames(se))
+rownames(samples) <- samples[, 1]
+samples <- samples[match(colnames(se), rownames(samples)),]
+samples$Batch <- "2"
+samples$Batch[samples[, 1] %in% c("EA21", "EA22", "EA23", "EA24", "EA25", "EA26", "EA27","EA28","EA14", "EA16","EA18" )] <- "1"
+samples$cells <- as.factor(gsub("_neg", "", gsub("_pos", "", samples$Group)))
+samples$treatment <- as.factor(gsub("ALDH_", "", gsub("LFNG_", "", samples$Group)))
+samples$Batch <- as.factor(samples$Batch)
+data <- assay(se)
+
+data <- data[, !colnames(data) %in% c("EA14",rownames(samples)[samples$Batch=="2"])]
+samples <- samples[!rownames(samples) %in% c("EA14",rownames(samples)[samples$Batch=="2"]),]
+samples$name <- c("Aldhl1l1+", "Aldhl1l1+" , "Lfng-GFP-", "Lfng-GFP-", "Lfng-GFP-","Aldhl1l1-", "Aldhl1l1-" , "Lfng-GFP+", "Lfng-GFP+", "Lfng-GFP+")
+
+dds<-DESeqDataSetFromMatrix(countData=round(data), colData=samples,design = ~ Group)
+dds <- DESeq(dds)
+rld <- vst(dds, blind=T)
+k <- assay(rld)
+
+res <- results(dds, contrast=c("Group","ALDH_pos","ALDH_neg"), pAdjustMethod="fdr")
+filtered <- data.frame(res [, c("log2FoldChange", "pvalue", "padj")])
+colnames(filtered) <- paste0("ALDH_posVsALDH_neg.", colnames(filtered))
+ALDH_posVsALDH_neg <- filtered
+write.table(ALDH_posVsALDH_neg, file="ALDH_posVsALDH_neg.txt", sep="\t", quote=F)
+
+res <- results(dds, contrast=c("Group","LFNG_pos","LFNG_neg"), pAdjustMethod="fdr")
+filtered <- data.frame(res [, c("log2FoldChange", "pvalue", "padj")])
+colnames(filtered) <- paste0("LFNG_posVsLFNG_neg.", colnames(filtered))
+LFNG_posVsLFNG_neg <- filtered
+write.table(LFNG_posVsLFNG_neg, file="LFNG_posVsLFNG_neg.txt", sep="\t", quote=F)
+
+res <- results(dds, contrast=c("Group","ALDH_pos","LFNG_pos"), pAdjustMethod="fdr")
+filtered <- data.frame(res [, c("log2FoldChange", "pvalue", "padj")])
+colnames(filtered) <- paste0("ALDH_posVsLFNG_pos.", colnames(filtered))
+ALDH_posVsLFNG_pos <- filtered
+write.table(ALDH_posVsLFNG_pos, file="ALDH_posVsLFNG_pos.txt", sep="\t", quote=F)
+
+pvalcutoff <- 0.05
+fc <- 1
+ALDH_pos_UP <- rownames(ALDH_posVsALDH_neg)[which(ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.padj<pvalcutoff & ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.log2FoldChange>fc)]
+ALDH_pos_DOWN <- rownames(ALDH_posVsALDH_neg)[which(ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.padj<pvalcutoff & ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.log2FoldChange<(-fc))]
+LFNG_pos_UP <- rownames(LFNG_posVsLFNG_neg)[which(LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.padj<pvalcutoff & LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.log2FoldChange>fc)]
+LFNG_pos_DOWN <- rownames(LFNG_posVsLFNG_neg)[which(LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.padj<pvalcutoff & LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.log2FoldChange<(-fc))]
+
+fc <- 0
+ALDH_pos_UP_FC0 <- rownames(ALDH_posVsALDH_neg)[which(ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.padj<pvalcutoff & ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.log2FoldChange>fc)]
+ALDH_pos_DOWN_FC0 <- rownames(ALDH_posVsALDH_neg)[which(ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.padj<pvalcutoff & ALDH_posVsALDH_neg$ALDH_posVsALDH_neg.log2FoldChange<(-fc))]
+LFNG_pos_UP_FC0 <- rownames(LFNG_posVsLFNG_neg)[which(LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.padj<pvalcutoff & LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.log2FoldChange>fc)]
+LFNG_pos_DOWN_FC0 <- rownames(LFNG_posVsLFNG_neg)[which(LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.padj<pvalcutoff & LFNG_posVsLFNG_neg$LFNG_posVsLFNG_neg.log2FoldChange<(-fc))]
+
+fc <- 1
+ALDH_posVsLFNG_pos_UP<- rownames(ALDH_posVsLFNG_pos)[which(ALDH_posVsLFNG_pos$ALDH_posVsLFNG_pos.padj<pvalcutoff & ALDH_posVsLFNG_pos$ALDH_posVsLFNG_pos.log2FoldChange>fc)]
+ALDH_posVsLFNG_pos_DOWN<- rownames(ALDH_posVsLFNG_pos)[which(ALDH_posVsLFNG_pos$ALDH_posVsLFNG_pos.padj<pvalcutoff & ALDH_posVsLFNG_pos$ALDH_posVsLFNG_pos.log2FoldChange<fc)]
+
+ALDH_pos_UP_ONLY <- intersect(setdiff(ALDH_pos_UP, c(LFNG_pos_UP_FC0,LFNG_pos_DOWN_FC0) ),ALDH_posVsLFNG_pos_UP)
+ALDH_pos_DOWN_ONLY <- intersect(setdiff(ALDH_pos_DOWN, c(LFNG_pos_UP_FC0,LFNG_pos_DOWN_FC0) ),ALDH_posVsLFNG_pos_DOWN)
+LFNG_pos_UP_ONLY <- intersect(setdiff(LFNG_pos_UP, c(ALDH_pos_UP_FC0,ALDH_pos_DOWN_FC0)),ALDH_posVsLFNG_pos_DOWN)
+LFNG_pos_DOWN_ONLY <- intersect(setdiff(LFNG_pos_DOWN, c(ALDH_pos_UP_FC0,ALDH_pos_DOWN_FC0)), ALDH_posVsLFNG_pos_UP)
+ALDH_pos_UP_AND_LFNG_pos_UP <- intersect(ALDH_pos_UP, LFNG_pos_UP)
+ALDH_pos_DOWN_AND_LFNG_pos_DOWN <- intersect(ALDH_pos_DOWN, LFNG_pos_DOWN)
+ALDH_pos_UP_AND_LFNG_pos_DOWN <- intersect(ALDH_pos_UP, LFNG_pos_DOWN)
+ALDH_pos_DOWN_AND_LFNG_pos_UP <- intersect(ALDH_pos_DOWN, LFNG_pos_UP)
+
+p.l <- list(ALDH_pos_UP_ONLY=ALDH_pos_UP_ONLY, 
+	ALDH_pos_DOWN_ONLY=ALDH_pos_DOWN_ONLY, 
+	LFNG_pos_UP_ONLY=LFNG_pos_UP_ONLY, 
+	LFNG_pos_DOWN_ONLY=LFNG_pos_DOWN_ONLY, 
+	ALDH_pos_UP_AND_LFNG_pos_UP=ALDH_pos_UP_AND_LFNG_pos_UP, 
+	ALDH_pos_DOWN_AND_LFNG_pos_DOWN=ALDH_pos_DOWN_AND_LFNG_pos_DOWN, 
+	ALDH_pos_UP_AND_LFNG_pos_DOWN=ALDH_pos_UP_AND_LFNG_pos_DOWN, 
+	ALDH_pos_DOWN_AND_LFNG_pos_UP=ALDH_pos_DOWN_AND_LFNG_pos_UP)
+
+p.l <- list(ALDH_pos_UP_ONLY=ALDH_pos_UP_ONLY, 
+	ALDH_pos_DOWN_ONLY=ALDH_pos_DOWN_ONLY, 
+	LFNG_pos_UP_ONLY=LFNG_pos_UP_ONLY, 
+	LFNG_pos_DOWN_ONLY=LFNG_pos_DOWN_ONLY, 
+	ALDH_pos_UP_AND_LFNG_pos_UP=ALDH_pos_UP_AND_LFNG_pos_UP, 
+	ALDH_pos_DOWN_AND_LFNG_pos_DOWN=ALDH_pos_DOWN_AND_LFNG_pos_DOWN)
+
+library (plyr)
+rows <- ldply (p.l, data.frame, stringsAsFactors=F)
+colnames(rows) <- c("group", "genes")
+
+
+all <- data.frame(ALDH_posVsALDH_neg, LFNG_posVsLFNG_neg, ALDH_posVsLFNG_pos )
+all$neurons <- "No"
+all$neurons[rownames(all) %in% neuron] <- "Yes"
+
+all$astrocyte <- "No"
+all$astrocyte[rownames(all) %in% ast] <- "Yes"
+
+write.table(all, file="all.txt", sep="\t", quote=F)
+
+for (i in 1:length(p.l))
+{
+	write.table(all[rownames(all) %in% p.l[[i]], ], file=paste0(names(p.l)[i], ".txt"), sep="\t", quote=F)
+}
+
+annotation_col <- data.frame(
+		Type =  factor(samples$Group, levels= c("ALDH_neg" ,"ALDH_pos", "LFNG_neg", "LFNG_pos")))
+
+annotation_row <- data.frame(
+		Group = factor(rows$group, levels=unique(rows$group)))
+
+rownames(annotation_col) = rownames(samples)
+rownames(annotation_row) = rows$genes
+
+library(gplots)
+
+rld <- vst(dds, blind=T)
+
+k<- assay(rld)
+write.table(k, file="normalized.data.txt", sep="\t", quote=F)
+
+
+data <- k[match(rows$genes, rownames(k)), ]
+gaps <-  sapply(unique(rows$group) , function(x) length(which(x==rows$group)))
+
+bk = unique(c(seq(-2,-0.01, length=100),seq(-0.01,0.01,length=100),seq(0.01,2,length=100))) 
+hmcols<- colorRampPalette(c("navy", "white", "firebrick3"))(length(bk)-1) 
+
+library(pheatmap)
+f <- as.vector(unlist(sapply(c("ALDH_neg" ,"ALDH_pos", "LFNG_neg", "LFNG_pos"), function(x) which(x==samples[,2]))))
+hmcols<- colorRampPalette(c("navy", "white", "firebrick3"))(length(bk)-1) 
+
+
+k <- pheatmap(data[, f],cluster_rows=FALSE, gaps_row = cumsum(gaps),cluster_cols=FALSE,
+		fontsize_row=0.1,fontsize_col=5, scale="row",  color =colorRampPalette(c("dodgerblue", "black", "yellow"))(100),
+	 labels_row= rows$genes, labels_col=samples$name)
+
+
+means <- sapply(c("Lfng-GFP+","Aldhl1l1+", "Lfng-GFP-", "Aldhl1l1-"), function(x) rowMeans(data[, samples$name==x]) )
+pheatmap(means[, ],cluster_rows=FALSE, gaps_row = cumsum(gaps),
+	fontsize_row = 0.1, scale="row", color =colorRampPalette(c("dodgerblue", "black", "yellow"))(100),
+	treeheight_row = 0, cluster_cols=F)
+
