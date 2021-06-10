@@ -1,23 +1,69 @@
-section*{Volcano Plot}
+dev.off()
+colors <- colorpanel(55,"mediumorchid2","black","aquamarine3")
+heatmap.2(as.matrix(P65_Heatmap),
+          col=colors,
+          Colv=F,
+          Rowv=F,
+          labRow = NA,
+          scale="row",
+          key=T,
+          keysize=1.05,
+          density.info="none",
+          trace="none",
+          cexCol=0.85,
+          cexRow=0.85,
+          margins=c(3.5,24.2))
+
+@
+
+
+\section*{Volcano Plot}
+
+Before cherry pickng out some motifs lets go through and make volcano plots where we can highlight some more of the TFs that we found for each region.
+
 A volcano plot typically plots the log fold change in gene expression on the \textit{x-axis} and the statistical significance on the y-axis. Genes that are highly dysregulated are farther to the left and right sides, while highly significant changes appear higher on the plot. Genes with significant differential expression are labeled in \textcolor{blue}{blue}.
 <<fig.height=4, fig.width=6>>=
 require(ggplot2)
 require(ggrepel)
 require(dplyr)
 
+#=============================================================================================
+#                                    P165 IGSF3 vs GFP  
 
-#Plot the volcano plot without the targets first
-with(res,plot(log2FoldChange, -log10(pvalue), pch=21, cex=0.8,col="gray20", bg="gray70", main="LFNG Astrocytes", xlim=c(-8.5,8), ylim=c(0,6)))
+
+#=============================================================================================
+ 
+
+#=============================================================================================
+#                       Volcano with 1.5 fold change cutoff    
+#=============================================================================================
+     
+
+#Plot the volcano plot first (Larger dots and colored dots outline in black)
+with(res2,plot(log2FoldChange, -log10(pvalue), pch=21, cex=1.2,col="gray20", bg="gray70", main=" P65 IGSF3 OE Tumor",xlim=c(-11,11),ylim=c(0,8.5)))
 
 #Add teal points for genes that have a pvalue of <0.05 and lfc > 0.5 (up regulated)
-with(subset(res, pvalue<.05 & log2FoldChange>0.75), points(log2FoldChange, -log10(pvalue), pch=21,cex=0.8, col="black",bg="tomato3"))
+with(subset(res2, pvalue<.05 & log2FoldChange>0.75), points(log2FoldChange, -log10(pvalue), pch=21, cex=1.2, col="black",bg="aquamarine3"))
 
 #Add purple points for genes that have a pvalue of <0.05 and lfc > 0.5 (down regulated)
-with(subset(res, pvalue<.05 & log2FoldChange<(-0.75)), points(log2FoldChange, -log10(pvalue), pch=21,cex=0.8, col="black",bg="dodgerblue2"))
+with(subset(res2, pvalue<.05 & log2FoldChange<(-0.75)), points(log2FoldChange, -log10(pvalue), pch=21, cex=1.2, col="black",bg="mediumorchid2"))
+
+with(subset(res2,GeneSymbol=="Igsf3"),points(log2FoldChange, -log10(pvalue), pch=21, cex=1.2, col="black", bg="aquamarine3"))
 
 ##### Add pvalue line ######
-abline(h=1.25, col="black")
-
+abline(h=1.19, col="black",lwd=1.75)
+abline(v=0.65, col="black",lwd=1.75)
+abline(v=-0.65, col="black",lwd=1.75)
 
 ####### Add pvalue text #####
-text(-10.2, 2.05, "(p<0.01)",pos=1,cex=0.7,col='black')
+text(-10.05, 1.3, "(p<0.05)",pos=1,cex=0.9,col='black')
+
+# Up targets with according to volcano plt parameters
+Up<-subset(res2,subset=(log2FoldChange>0.75 & pvalue<.05))
+nrow(Up)
+# Down targets with according to volcano plt parameters
+Down<-subset(res2,subset=(log2FoldChange<(-0.75) & pvalue<.05))
+nrow(Down)
+
+text(-6.2, 8.0, "Downregulated: 244",pos=3,cex=0.85, font=4)
+text(6.2, 8.0, "Upregulated: 743",pos=3,cex=0.85, font=4)
