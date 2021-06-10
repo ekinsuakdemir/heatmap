@@ -1,0 +1,23 @@
+section*{Volcano Plot}
+A volcano plot typically plots the log fold change in gene expression on the \textit{x-axis} and the statistical significance on the y-axis. Genes that are highly dysregulated are farther to the left and right sides, while highly significant changes appear higher on the plot. Genes with significant differential expression are labeled in \textcolor{blue}{blue}.
+<<fig.height=4, fig.width=6>>=
+require(ggplot2)
+require(ggrepel)
+require(dplyr)
+
+
+#Plot the volcano plot without the targets first
+with(res,plot(log2FoldChange, -log10(pvalue), pch=21, cex=0.8,col="gray20", bg="gray70", main="LFNG Astrocytes", xlim=c(-8.5,8), ylim=c(0,6)))
+
+#Add teal points for genes that have a pvalue of <0.05 and lfc > 0.5 (up regulated)
+with(subset(res, pvalue<.05 & log2FoldChange>0.75), points(log2FoldChange, -log10(pvalue), pch=21,cex=0.8, col="black",bg="tomato3"))
+
+#Add purple points for genes that have a pvalue of <0.05 and lfc > 0.5 (down regulated)
+with(subset(res, pvalue<.05 & log2FoldChange<(-0.75)), points(log2FoldChange, -log10(pvalue), pch=21,cex=0.8, col="black",bg="dodgerblue2"))
+
+##### Add pvalue line ######
+abline(h=1.25, col="black")
+
+
+####### Add pvalue text #####
+text(-10.2, 2.05, "(p<0.01)",pos=1,cex=0.7,col='black')
